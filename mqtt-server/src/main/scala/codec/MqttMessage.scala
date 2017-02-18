@@ -6,6 +6,26 @@ package codec
 object MqttMessage {
 
   trait MessageType
+  object MessageType{
+    def getMessageType(value: Int):MessageType = {
+      value match{
+        case 0 => CONNACK
+        case 1 => CONNECT
+        case 2 => DISCONNECT
+        case 3 => PINGREQ
+        case 4 => PINGRESP
+        case 5 => PUBACK
+        case 6 => PUBCOMP
+        case 7 => PUBLISH
+        case 8 => PUBREC
+        case 9 => SUBACK
+        case 10 => SUBSCRIBE
+        case 11 => UNSUBACK
+        case 12 => UNSUBSCRIBE
+        case _ => throw new IllegalArgumentException("wrong message type")
+      }
+    }
+  }
   case object CONNACK  extends MessageType
   case object CONNECT extends MessageType
   case object DISCONNECT extends MessageType
