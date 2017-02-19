@@ -335,10 +335,12 @@ class Decoder {
     throw new IllegalArgumentException(s" $mqttVersion is unknown mqtt version");
   }
 
-  object Decoder{
+}
+object Decoder{
     val TOPIC_WILDCARDS:Array[Char] = Array('#', '+')
     val MIN_CLIENT_ID_LENGTH = 1;
     val MAX_CLIENT_ID_LENGTH = 23;
     val DEFAULT_MAX_BYTES_IN_MESSAGE = 8092;
-  }
+
+    def decodeMsg(byteString: ByteString) = new Decoder().decode(byteString)
 }
