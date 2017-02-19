@@ -44,15 +44,24 @@ object MqttMessage {
   case object UNSUBACK extends MessageType
   case object UNSUBSCRIBE extends MessageType
 
-  trait QoS
-  object QoS{
-    def getQos(value: Int): QoS ={
+  sealed trait QoS
+  object QoS {
+    def getQos(value: Int): QoS = {
       value match {
         case 0 => AT_LEAST_ONCE
         case 1 => AT_MOST_ONCE
         case 2 => EXACTLY_ONCE
-        case 4 => FAILURE
+        case 3 => FAILURE
         case _ => throw new DecoderException(s"wrong qos $value")
+      }
+    }
+
+    def value(qoS: QoS): Int = {
+      qoS match {
+        case AT_LEAST_ONCE => 0
+        case AT_MOST_ONCE => 1
+        case EXACTLY_ONCE => 2
+        case FAILURE => 3
       }
     }
   }
@@ -74,7 +83,20 @@ object MqttMessage {
 
   }
 
-  trait ConnectReturnCode
+  sealed trait ConnectReturnCode
+  object ConnectReturnCode{
+    def getReturnCode(value: Int):ConnectReturnCode ={
+      value match {
+        case 0 => CONNECTION_ACCEPTED
+        case 1 => CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION
+        case 2 => CONNECTION_REFUSED_IDENTIFIER_REJECTED
+        case 3 => CONNECTION_REFUSED_SERVER_UNAVAILABLE
+        case 4 => CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD
+        case 5 => CONNECTION_REFUSED_NOT_AUTHORIZED
+        case _ => throw new DecoderException(s"bad connect return code $value")
+      }
+    }
+  }
   case object CONNECTION_ACCEPTED extends ConnectReturnCode
   case object CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD extends ConnectReturnCode
   case object CONNECTION_REFUSED_IDENTIFIER_REJECTED extends ConnectReturnCode
@@ -104,7 +126,7 @@ object MqttMessage {
   case class PubAckMessage( fixedHeader: FixedHeader,
                             variableHeader: MessageIdVariableHeader) extends Message(fixedHeader, variableHeader, null, null)
 
-  case class PublishVariableHeader(topicName : String, messageId : String)
+  case class PublishVariableHeader(topicName : String, messageId : Int)
   case class PublishMessage( fixedHeader: FixedHeader,  variableHeader: PublishVariableHeader, payload: String) extends Message(fixedHeader, variableHeader, payload, null)
   case class SubAckPayload(grantedQoS: List[Int]){
     require(grantedQoS != null)

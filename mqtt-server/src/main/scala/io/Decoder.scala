@@ -3,9 +3,8 @@ package io
 import java.nio.ByteBuffer
 
 import akka.util.ByteString
-import codec.MqttMessage.{CONNECT, MessageType, FixedHeader}
 import codec.MqttMessage._
-import codec.{MQTT_3_1_1, MqttVersion}
+import codec.{MQTT_3_1, MQTT_3_1_1, MqttVersion}
 
 /**
   * Created by Mohit Kumar on 2/18/2017.
@@ -44,6 +43,11 @@ class Decoder {
   def readVariableHeader(byteString: ByteString, fixedHeader: FixedHeader): Result[_] ={
     fixedHeader.messageType match {
       case CONNECT => decodeConnectionVariableHeader(byteString)
+      case CONNACK => decodeConnAckVariableHeader(byteString)
+      case SUBSCRIBE | UNSUBSCRIBE | SUBACK | UNSUBACK | PUBACK | PUBREC | PUBCOMP | PUBREL => decodeMessageIdVariableHeader(byteString)
+      case PUBLISH => decodePublishVariableHeader(byteString,fixedHeader)
+      case PINGREQ  | PINGRESP | DISCONNECT => ResultObj(null,0)
+      case _ =>  ResultObj(null,0)
     }
   }
   def decodeConnectionVariableHeader(byteString: ByteString): Result[ConnectVariableHeader]={
@@ -72,6 +76,144 @@ class Decoder {
     ResultObj(connectVariableHeader,byteConsumed)
   }
 
+  def decodeConnAckVariableHeader(byteString: ByteString): Result[ConnAckVariableHeader] ={
+    val buffer = byteString.asByteBuffer
+    val sessionPresent = (buffer.get & 0x01) == 0x01
+    val returnCode =  buffer.get
+    val byteConsumed = 2
+    val connAckVariableHeader = ConnAckVariableHeader(ConnectReturnCode.getReturnCode(returnCode),sessionPresent)
+    ResultObj(connAckVariableHeader,byteConsumed)
+  }
+  def decodeMessageIdVariableHeader(byteString: ByteString):Result[MessageIdVariableHeader] = {
+    val messageId = decodeMessageId(byteString)
+    ResultObj[MessageIdVariableHeader](MessageIdVariableHeader.from(messageId.value),messageId.numberOfByteConsumed)
+  }
+
+  def decodePublishVariableHeader(byteString: ByteString, mqttFixedHeader:FixedHeader):Result[PublishVariableHeader] = {
+    val decodedTopic = decodeString(byteString)
+    if (!isValidPublishTopicName(decodedTopic.value)) {
+      throw new DecoderException("invalid publish topic name: " + decodedTopic.value + " (contains wildcards)");
+    }
+    var numberOfBytesConsumed = decodedTopic.numberOfByteConsumed;
+    var messageId = -1;
+    if (QoS.value(mqttFixedHeader.qos) > 0) {
+      val decodedMessageId = decodeMessageId(byteString);
+      messageId = decodedMessageId.value;
+      numberOfBytesConsumed += decodedMessageId.numberOfByteConsumed;
+    }
+    val mqttPublishVariableHeader = PublishVariableHeader(decodedTopic.value, messageId);
+    ResultObj[PublishVariableHeader](mqttPublishVariableHeader, numberOfBytesConsumed);
+  }
+
+  def decodePayload(byteString: ByteString, messageType: MessageType
+                    , bytesRemainingInVariablePart: Int, variableHeader:Any):Result[_] = {
+    messageType match {
+      case CONNECT => decodeConnectionPayload(byteString, variableHeader.asInstanceOf[ConnectVariableHeader]);
+
+      case SUBSCRIBE => decodeSubscribePayload(byteString, bytesRemainingInVariablePart);
+
+      case SUBACK => decodeSubackPayload(byteString, bytesRemainingInVariablePart);
+
+      case UNSUBSCRIBE => decodeUnsubscribePayload(byteString, bytesRemainingInVariablePart);
+
+      case PUBLISH => decodePublishPayload(byteString, bytesRemainingInVariablePart);
+
+      case _ => ResultObj(null, 0);
+    }
+  }
+
+  def decodeConnectionPayload(byteString: ByteString, mqttConnectVariableHeader:ConnectVariableHeader):Result[ConnectPayload] = {
+    val decodedClientId = decodeString(byteString)
+    val decodedClientIdValue = decodedClientId.value;
+    val mqttVersion = MqttVersion.fromProtocolNameAndLevel(mqttConnectVariableHeader.name,
+      mqttConnectVariableHeader.version.toByte);
+
+    if (!isValidClientId(mqttVersion, decodedClientIdValue)) {
+      throw new MqttIdentifierRejectedException("invalid clientIdentifier: " + decodedClientIdValue);
+    }
+    var numberOfBytesConsumed = decodedClientId.numberOfByteConsumed;
+
+    var decodedWillTopic:Result[String] = null;
+    var decodedWillMessage:Result[String] = null;
+    if (mqttConnectVariableHeader.isWillFlag) {
+      decodedWillTopic = decodeString(byteString, 0, 32767);
+      numberOfBytesConsumed += decodedWillTopic.numberOfByteConsumed
+      decodedWillMessage = decodeAsciiString(byteString);
+      numberOfBytesConsumed += decodedWillMessage.numberOfByteConsumed;
+    }
+    var decodedUserName :Result[String] = null;
+
+    var decodedPassword:Result[String] = null;
+    if (mqttConnectVariableHeader.hasUserName) {
+      decodedUserName = decodeString(byteString);
+      numberOfBytesConsumed += decodedUserName.numberOfByteConsumed;
+    }
+    if (mqttConnectVariableHeader.hasPassword) {
+      decodedPassword = decodeString(byteString);
+      numberOfBytesConsumed += decodedPassword.numberOfByteConsumed;
+    }
+
+    val mqttConnectPayload = ConnectPayload(decodedClientId.value,
+        if(decodedWillTopic != null) decodedWillTopic.value else  null,
+    if(decodedWillMessage != null) decodedWillMessage.value else  null,
+    if(decodedUserName != null) decodedUserName.value else  null,
+    if(decodedPassword != null) decodedPassword.value else null)
+    return ResultObj(mqttConnectPayload, numberOfBytesConsumed)
+  }
+
+  def decodeSubscribePayload(byteString: ByteString, bytesRemainingInVariablePart:Int):Result[SubscriptionPayload] = {
+    val buffer = byteString.asByteBuffer
+    val subscribeTopics = List[TopicSubscription]()
+    var numberOfBytesConsumed = 0;
+    while (numberOfBytesConsumed < bytesRemainingInVariablePart) {
+      val decodedTopicName = decodeString(byteString)
+      numberOfBytesConsumed += decodedTopicName.numberOfByteConsumed
+      val qos = buffer.get & 0x03
+      numberOfBytesConsumed += 1;
+      subscribeTopics.+:(TopicSubscription(decodedTopicName.value, QoS.getQos(qos)))
+    }
+     ResultObj[SubscriptionPayload](SubscriptionPayload(subscribeTopics), numberOfBytesConsumed)
+  }
+
+  def decodeSubackPayload(byteString: ByteString, bytesRemainingInVariablePart:Int): Result[SubAckPayload] = {
+    val buffer = byteString.asByteBuffer
+    val grantedQos = List[Int]()
+    var numberOfBytesConsumed = 0;
+    while (numberOfBytesConsumed < bytesRemainingInVariablePart) {
+      val qos = buffer.get & 0x03
+      numberOfBytesConsumed += 1
+      grantedQos.+:(qos)
+    }
+    ResultObj(SubAckPayload(grantedQos), numberOfBytesConsumed)
+  }
+
+  def decodeUnsubscribePayload(byteString: ByteString, bytesRemainingInVariablePart: Int) = {
+    val unsubscribeTopics = List[String]()
+    var numberOfBytesConsumed = 0
+    while (numberOfBytesConsumed < bytesRemainingInVariablePart) {
+      val decodedTopicName = decodeString(byteString)
+      numberOfBytesConsumed += decodedTopicName.numberOfByteConsumed
+      unsubscribeTopics.+:(decodedTopicName.value)
+    }
+    ResultObj(UnsubscribePayload(unsubscribeTopics), numberOfBytesConsumed)
+  }
+
+  def decodePublishPayload(byteString: ByteString, bytesRemainingInVariablePart:Int):Result[ByteBuffer]= {
+    val buffer = byteString.asByteBuffer
+    val resultBuf = ByteBuffer.allocate(bytesRemainingInVariablePart)
+    for(i <- 0 to bytesRemainingInVariablePart){
+      resultBuf.put(buffer.get)
+    }
+    ResultObj[ByteBuffer](resultBuf, bytesRemainingInVariablePart);
+  }
+
+  def decodeMessageId(byteString: ByteString):Result[Int]= {
+    val messageId = decodeMsbLsb(byteString);
+    if (!isValidMessageId(messageId.value)) {
+      throw new DecoderException("invalid messageId: " + messageId.value);
+    }
+    messageId;
+  }
   def decodeString(byteString: ByteString): Result[String] ={
     decodeString(byteString,0,Int.MaxValue)
   }
@@ -91,6 +233,17 @@ class Decoder {
     skipBytes(buffer, size)
     byteConsumed = byteConsumed + size
     ResultObj[String](s,byteConsumed)
+  }
+
+ def decodeAsciiString(byteString: ByteString):Result[String] =  {
+    val result = decodeString(byteString, 0, Integer.MAX_VALUE);
+    val s = result.value;
+    for (i <- 0 to s.length) {
+      if (s.charAt(i) > 127) {
+        ResultObj(null, result.numberOfByteConsumed);
+      }
+    }
+    ResultObj(s, result.numberOfByteConsumed);
   }
 
   def  decodeMsbLsb(byteString: ByteString): Result[Int] = {
@@ -139,5 +292,38 @@ class Decoder {
 
   def skipBytes(byteBuffer: ByteBuffer, size:Int): Unit ={
     for(i <- 0 to size) {byteBuffer.get}
+  }
+
+  def isValidPublishTopicName(topicName :String):Boolean= {
+    // publish topic name must not contain any wildcard
+    for(c <- Decoder.TOPIC_WILDCARDS){
+      if (topicName.indexOf(c) >= 0) {
+        false;
+      }
+    }
+    true;
+  }
+
+  def isValidMessageId(messageId: Int):Boolean = {
+    messageId != 0;
+  }
+
+  def isValidClientId(mqttVersion: MqttVersion, clientId:String):Boolean = {
+    if (mqttVersion == MQTT_3_1) {
+      return clientId != null && clientId.length() >= Decoder.MIN_CLIENT_ID_LENGTH &&
+        clientId.length() <= Decoder.MAX_CLIENT_ID_LENGTH;
+    }
+    if (mqttVersion == MQTT_3_1_1) {
+      // In 3.1.3.1 Client Identifier of MQTT 3.1.1 specification, The Server MAY allow ClientId’s
+      // that contain more than 23 encoded bytes. And, The Server MAY allow zero-length ClientId.
+      return clientId != null;
+    }
+    throw new IllegalArgumentException(s" $mqttVersion is unknown mqtt version");
+  }
+
+  object Decoder{
+    val TOPIC_WILDCARDS:Array[Char] = Array('#', '+')
+    val MIN_CLIENT_ID_LENGTH = 1;
+    val MAX_CLIENT_ID_LENGTH = 23;
   }
 }
