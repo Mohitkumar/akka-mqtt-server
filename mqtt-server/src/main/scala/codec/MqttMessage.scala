@@ -76,7 +76,7 @@ object MqttMessage {
   object SUCCESS extends DecodeResult
   object UNFINISHED extends DecodeResult
 
-  abstract class Message(fixedHeader: FixedHeader, variableHeader: Any, payload: Any, decodeResult: DecodeResult){
+  class Message(fixedHeader: FixedHeader, variableHeader: Any, payload: Any, decodeResult: DecodeResult){
     def this(fixedHeader: FixedHeader) = this(fixedHeader, null, null, null)
     def this(fixedHeader: FixedHeader, variableHeader: Any) = this(fixedHeader, variableHeader, null, null)
     def this(fixedHeader: FixedHeader, variableHeader: Any, payload: Any) = this(fixedHeader, variableHeader, payload, null)

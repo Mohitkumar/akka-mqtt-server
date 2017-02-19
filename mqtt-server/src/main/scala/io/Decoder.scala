@@ -4,14 +4,28 @@ import java.nio.ByteBuffer
 
 import akka.util.ByteString
 import codec.MqttMessage._
-import codec.{MQTT_3_1, MQTT_3_1_1, MqttVersion}
+import codec.{MqttMessage, MQTT_3_1, MQTT_3_1_1, MqttVersion}
 
 /**
   * Created by Mohit Kumar on 2/18/2017.
   */
 class Decoder {
-  def decode(byteString: ByteString): Unit ={
-
+  def decode(byteString: ByteString): Message ={
+    val fixedHeader = decodeFixedHeader(byteString)
+    var remainingLength = fixedHeader.remainingLength
+    if(remainingLength > Decoder.DEFAULT_MAX_BYTES_IN_MESSAGE){
+      throw new DecoderException(s"too large message: $remainingLength bytes")
+    }
+    val decodedVariableHeader = readVariableHeader(byteString,fixedHeader)
+    val variableHeader = decodedVariableHeader.value
+    remainingLength -= decodedVariableHeader.numberOfByteConsumed
+    val decodedPayload = decodePayload(byteString,fixedHeader.messageType,remainingLength,variableHeader)
+    val payload = decodedPayload.value
+    remainingLength -= decodedPayload.numberOfByteConsumed
+    if(remainingLength != 0){
+      throw new DecoderException(s"non-zero remaining payload bytes: $remainingLength (${fixedHeader.messageType})");
+    }
+    new Message(fixedHeader,variableHeader,payload)
   }
 
   def decodeFixedHeader(byteString: ByteString):FixedHeader = {
@@ -325,5 +339,6 @@ class Decoder {
     val TOPIC_WILDCARDS:Array[Char] = Array('#', '+')
     val MIN_CLIENT_ID_LENGTH = 1;
     val MAX_CLIENT_ID_LENGTH = 23;
+    val DEFAULT_MAX_BYTES_IN_MESSAGE = 8092;
   }
 }
