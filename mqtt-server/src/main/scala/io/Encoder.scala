@@ -234,7 +234,7 @@ class Encoder {
     val topicNameBytes = encodeStringUtf8(topicName);
     val qos = if(QoS.value(mqttFixedHeader.qos)> 0) 2 else 0
     val variableHeaderBufferSize = 2 + topicNameBytes.length + qos;
-    val  payloadBufferSize = payload.;
+    val  payloadBufferSize = payload.remaining();
     val variablePartSize = variableHeaderBufferSize + payloadBufferSize;
     val fixedHeaderBufferSize = 1 + getVariableLengthInt(variablePartSize);
 
