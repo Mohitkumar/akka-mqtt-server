@@ -45,8 +45,7 @@ object MqttMessage {
         case UNSUBACK => 11
         case PINGREQ => 12
         case PINGRESP => 13
-        case DISCONNECT =>
-        case _ => throw new DecoderException(s"wrong message type $value")
+        case DISCONNECT => 14
       }
     }
   }
