@@ -1,5 +1,7 @@
 package codec
 
+import java.nio.ByteBuffer
+
 import io.DecoderException
 
 /**
@@ -25,6 +27,25 @@ object MqttMessage {
         case 12 => PINGREQ
         case 13 => PINGRESP
         case 14 => DISCONNECT
+        case _ => throw new DecoderException(s"wrong message type $value")
+      }
+    }
+    def value(messageType: MessageType):Int = {
+      messageType match{
+        case CONNECT => 1
+        case CONNACK => 2
+        case PUBLISH => 3
+        case PUBACK => 4
+        case PUBREC => 5
+        case PUBREL=> 6
+        case PUBCOMP => 7
+        case SUBSCRIBE => 8
+        case SUBACK => 9
+        case UNSUBSCRIBE => 10
+        case UNSUBACK => 11
+        case PINGREQ => 12
+        case PINGRESP => 13
+        case DISCONNECT =>
         case _ => throw new DecoderException(s"wrong message type $value")
       }
     }
@@ -99,6 +120,17 @@ object MqttMessage {
         case _ => throw new DecoderException(s"bad connect return code $value")
       }
     }
+
+    def value (value: ConnectReturnCode):Int ={
+      value match {
+        case CONNECTION_ACCEPTED => 0
+        case CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION => 1
+        case CONNECTION_REFUSED_IDENTIFIER_REJECTED => 2
+        case CONNECTION_REFUSED_SERVER_UNAVAILABLE => 3
+        case CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD => 4
+        case CONNECTION_REFUSED_NOT_AUTHORIZED => 5
+      }
+    }
   }
   case object CONNECTION_ACCEPTED extends ConnectReturnCode
   case object CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD extends ConnectReturnCode
@@ -108,7 +140,10 @@ object MqttMessage {
   case object CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION extends ConnectReturnCode
 
   case class ConnAckVariableHeader(connectReturnCode: ConnectReturnCode, sessionPresent: Boolean)
-  case class ConnAckMessage(fixedHeader: FixedHeader,  variableHeader: ConnAckVariableHeader)extends Message(fixedHeader, variableHeader, null, null)
+  case class ConnAckMessage(fixedHeader: FixedHeader,  variableHeader: ConnAckVariableHeader)extends Message(fixedHeader, variableHeader, null, null){
+    override def getFixedHeader = fixedHeader
+    override def getVariableHeader = variableHeader
+  }
 
   case class ConnectVariableHeader(name: String, version:Int, hasUserName: Boolean, hasPassword: Boolean,
                                    isWillRetain: Boolean,  willQos: Int, isWillFlag: Boolean,
@@ -116,7 +151,11 @@ object MqttMessage {
 
   case class ConnectPayload(clientIdentifier: String, willTopic: String, willMessage:String ,userName:String, password: String )
   case class ConnectMessage(fixedHeader: FixedHeader, variableHeader: ConnectVariableHeader,
-                            payload: ConnectPayload) extends Message(fixedHeader, variableHeader, payload, null)
+                            payload: ConnectPayload) extends Message(fixedHeader, variableHeader, payload, null){
+    override def getFixedHeader = fixedHeader
+    override def getVariableHeader = variableHeader
+    override def getPayload = payload
+  }
 
   case class MessageIdVariableHeader(msgId: Int){
     def messageId():Int=msgId
@@ -127,25 +166,47 @@ object MqttMessage {
     }
   }
   case class PubAckMessage( fixedHeader: FixedHeader,
-                            variableHeader: MessageIdVariableHeader) extends Message(fixedHeader, variableHeader, null, null)
+                            variableHeader: MessageIdVariableHeader) extends Message(fixedHeader, variableHeader, null, null){
+    override def getFixedHeader = fixedHeader
+    override def getVariableHeader = variableHeader
+  }
 
   case class PublishVariableHeader(topicName : String, messageId : Int)
-  case class PublishMessage( fixedHeader: FixedHeader,  variableHeader: PublishVariableHeader, payload: String) extends Message(fixedHeader, variableHeader, payload, null)
+  case class PublishMessage( fixedHeader: FixedHeader,  variableHeader: PublishVariableHeader, payload: ByteBuffer) extends Message(fixedHeader, variableHeader, payload, null){
+    override def getFixedHeader = fixedHeader
+    override def getVariableHeader = variableHeader
+    override def getPayload = payload
+  }
   case class SubAckPayload(grantedQoS: List[Int]){
     require(grantedQoS != null)
     def this(grantedQoS:Array[Int]) = this(grantedQoS.toList)
     def grantedQos():List[Int] = grantedQoS
   }
   case class SubAckMessage( fixedHeader: FixedHeader,  variableHeader: MessageIdVariableHeader,
-                            payload: SubAckPayload) extends Message(fixedHeader, variableHeader,payload,null)
+                            payload: SubAckPayload) extends Message(fixedHeader, variableHeader,payload,null){
+    override def getFixedHeader = fixedHeader
+    override def getVariableHeader = variableHeader
+    override def getPayload = payload
+  }
   case class TopicSubscription(topicFilter: String, qoS: QoS)
   case class SubscriptionPayload(topicSubscriptions: List[TopicSubscription])
   case class SubscriptionMessage(fixedHeader: FixedHeader,  variableHeader: MessageIdVariableHeader,
-                                 payload: SubscriptionPayload) extends Message(fixedHeader, variableHeader, payload, null)
+                                 payload: SubscriptionPayload) extends Message(fixedHeader, variableHeader, payload, null){
+    override def getFixedHeader = fixedHeader
+    override def getVariableHeader = variableHeader
+    override def getPayload = payload
+  }
 
-  case class UnsubAckMessage(fixedHeader: FixedHeader, variableHeader: MessageIdVariableHeader) extends Message(fixedHeader, variableHeader, null, null)
+  case class UnsubAckMessage(fixedHeader: FixedHeader, variableHeader: MessageIdVariableHeader) extends Message(fixedHeader, variableHeader, null, null){
+    override def getFixedHeader = fixedHeader
+    override def getVariableHeader = variableHeader
+  }
   case class UnsubscribePayload(topics: List[String])
   case class UnsubscribeMessage(fixedHeader: FixedHeader,  variableHeader: MessageIdVariableHeader,
-                                 payload: UnsubscribePayload) extends Message(fixedHeader, variableHeader, payload, null)
+                                 payload: UnsubscribePayload) extends Message(fixedHeader, variableHeader, payload, null){
+    override def getFixedHeader = fixedHeader
+    override def getVariableHeader = variableHeader
+    override def getPayload = payload
+  }
 
 }

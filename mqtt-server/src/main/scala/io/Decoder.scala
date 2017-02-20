@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import akka.util.ByteString
 import codec.MqttMessage._
 import codec.{MqttMessage, MQTT_3_1, MQTT_3_1_1, MqttVersion}
-
+import io.Util._
 /**
   * Created by Mohit Kumar on 2/18/2017.
   */
@@ -314,19 +314,6 @@ class Decoder {
 
   def isValidMessageId(messageId: Int):Boolean = {
     messageId != 0;
-  }
-
-  def isValidClientId(mqttVersion: MqttVersion, clientId:String):Boolean = {
-    if (mqttVersion == MQTT_3_1) {
-      return clientId != null && clientId.length() >= Decoder.MIN_CLIENT_ID_LENGTH &&
-        clientId.length() <= Decoder.MAX_CLIENT_ID_LENGTH;
-    }
-    if (mqttVersion == MQTT_3_1_1) {
-      // In 3.1.3.1 Client Identifier of MQTT 3.1.1 specification, The Server MAY allow ClientId’s
-      // that contain more than 23 encoded bytes. And, The Server MAY allow zero-length ClientId.
-      return clientId != null;
-    }
-    throw new IllegalArgumentException(s" $mqttVersion is unknown mqtt version");
   }
 
 }
