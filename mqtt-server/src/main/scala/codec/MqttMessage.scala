@@ -80,7 +80,10 @@ object MqttMessage {
     def this(fixedHeader: FixedHeader) = this(fixedHeader, null, null, null)
     def this(fixedHeader: FixedHeader, variableHeader: Any) = this(fixedHeader, variableHeader, null, null)
     def this(fixedHeader: FixedHeader, variableHeader: Any, payload: Any) = this(fixedHeader, variableHeader, payload, null)
-
+    def getFixedHeader = fixedHeader
+    def getVariableHeader = variableHeader
+    def getPayload = payload
+    override def toString = s"Message(fixedHeadr=$fixedHeader, variableHeader=$variableHeader,payload$payload decodeResult $decodeResult)"
   }
 
   sealed trait ConnectReturnCode

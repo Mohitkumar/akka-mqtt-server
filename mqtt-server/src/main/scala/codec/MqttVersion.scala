@@ -16,10 +16,10 @@ sealed trait MqttVersion{
 object MqttVersion{
   def fromProtocolNameAndLevel(protocolName: String, protocolLevel:Byte): MqttVersion ={
     if(MQTT_3_1.protocolName == protocolName && MQTT_3_1.protocolLevel == protocolLevel){
-      MQTT_3_1
+      return MQTT_3_1
     }
     if(MQTT_3_1_1.protocolName == protocolName && MQTT_3_1_1.protocolLevel == protocolLevel){
-      MQTT_3_1_1
+      return MQTT_3_1_1
     }
     throw new UnAcceptableProtocolException(s"protocol name $protocolName or/and level $protocolLevel unacceptable")
   }
