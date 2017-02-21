@@ -34,6 +34,13 @@ class Handler extends Actor with ActorLogging{
         val pubAckMessage = PubAckMessage(fixedHeader,variableHeader)
         sender() ! Write(Encoder.encode(pubAckMessage))
       }
+      if(fixedheader.messageType == SUBSCRIBE){
+        val fixedHeader = FixedHeader(SUBACK,false,AT_LEAST_ONCE,false,0)
+        val variableHeader = MessageIdVariableHeader(1)
+        val payload = SubAckPayload(List(0))
+        val subAckMsg = SubAckMessage(fixedHeader,variableHeader,payload)
+        sender ! Write(Encoder.encode(subAckMsg))
+      }
       log.info(s"msg is $msg")
     }
     case PeerClosed => log.info("stopping handler ");context stop self

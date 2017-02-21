@@ -68,20 +68,20 @@ object MqttMessage {
   object QoS {
     def getQos(value: Int): QoS = {
       value match {
-        case 0 => AT_LEAST_ONCE
-        case 1 => AT_MOST_ONCE
+        case 0 => AT_MOST_ONCE
+        case 1 => AT_LEAST_ONCE
         case 2 => EXACTLY_ONCE
-        case 3 => FAILURE
+        case 0x80 => FAILURE
         case _ => throw new DecoderException(s"wrong qos $value")
       }
     }
 
     def value(qoS: QoS): Int = {
       qoS match {
-        case AT_LEAST_ONCE => 0
-        case AT_MOST_ONCE => 1
+        case AT_MOST_ONCE => 0
+        case AT_LEAST_ONCE => 1
         case EXACTLY_ONCE => 2
-        case FAILURE => 3
+        case FAILURE => 0x80
       }
     }
   }

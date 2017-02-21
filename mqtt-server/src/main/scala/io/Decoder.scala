@@ -30,7 +30,7 @@ class Decoder {
   }
 
   def decodeFixedHeader(buffer: ByteBuffer):FixedHeader = {
-    val b1 = buffer.get()
+    val b1 = buffer.get() & 0xff
     val msgType = MessageType.getMessageType(b1 >> 4)
     val dupFlag = b1.&(0x08) == 0x08
     val qosLevel = (b1 & 0x06) >> 1
@@ -40,7 +40,7 @@ class Decoder {
     var digit: Short = 0
     var loops = 0;
     do {
-      digit = buffer.get();
+      digit = (buffer.get() & 0xff).toShort;
       remainingLength += (digit & 127) * multiplier;
       multiplier *= 128;
       loops += 1;
@@ -70,7 +70,7 @@ class Decoder {
       val protoLevel = buffer.get
       byteConsumed += 1
       val mqttVersion = MqttVersion.fromProtocolNameAndLevel(protocolStrResult.value,protoLevel)
-      val b1 = buffer.get
+      val b1 = buffer.get & 0xff
       byteConsumed += 1
       val keepAlive = decodeMsbLsb(buffer)
       byteConsumed += keepAlive.numberOfByteConsumed
@@ -91,7 +91,7 @@ class Decoder {
   }
 
   def decodeConnAckVariableHeader(buffer: ByteBuffer): Result[ConnAckVariableHeader] ={
-    val sessionPresent = (buffer.get & 0x01) == 0x01
+    val sessionPresent = (buffer.get & 0xff & 0x01) == 0x01
     val returnCode =  buffer.get
     val byteConsumed = 2
     val connAckVariableHeader = ConnAckVariableHeader(ConnectReturnCode.getReturnCode(returnCode),sessionPresent)
@@ -180,7 +180,7 @@ class Decoder {
     while (numberOfBytesConsumed < bytesRemainingInVariablePart) {
       val decodedTopicName = decodeString(buffer)
       numberOfBytesConsumed += decodedTopicName.numberOfByteConsumed
-      val qos = buffer.get & 0x03
+      val qos = buffer.get & 0xff & 0x03
       numberOfBytesConsumed += 1;
       subscribeTopics.+:(TopicSubscription(decodedTopicName.value, QoS.getQos(qos)))
     }
@@ -191,7 +191,7 @@ class Decoder {
     val grantedQos = List[Int]()
     var numberOfBytesConsumed = 0;
     while (numberOfBytesConsumed < bytesRemainingInVariablePart) {
-      val qos = buffer.get & 0x03
+      val qos = buffer.get & 0xff & 0x03
       numberOfBytesConsumed += 1
       grantedQos.+:(qos)
     }
@@ -259,8 +259,8 @@ class Decoder {
     decodeMsbLsb(buffer,0,65535)
   }
   def  decodeMsbLsb(buffer: ByteBuffer, min:Int, max:Int): Result[Int]={
-    val msbLength = buffer.get
-    val lsbLength = buffer.get
+    val msbLength = buffer.get & 0xff
+    val lsbLength = buffer.get & 0xff
     var result = (msbLength << 8) | lsbLength
     val byteConsumed = 2
     if(result < min || result > max){
