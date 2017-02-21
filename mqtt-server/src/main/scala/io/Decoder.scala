@@ -247,7 +247,7 @@ class Decoder {
  def decodeAsciiString(buffer: ByteBuffer):Result[String] =  {
     val result = decodeString(buffer, 0, Integer.MAX_VALUE);
     val s = result.value;
-    for (i <- 0 to s.length) {
+    for (i <- 0 until s.length) {
       if (s.charAt(i) > 127) {
         ResultObj(null, result.numberOfByteConsumed);
       }
@@ -299,7 +299,7 @@ class Decoder {
   }
 
   def skipBytes(byteBuffer: ByteBuffer, size:Int): Unit ={
-    for(i <- 0 to size) {byteBuffer.get}
+    for(i <- 0 until size) {byteBuffer.get}
   }
 
   def isValidPublishTopicName(topicName :String):Boolean= {
