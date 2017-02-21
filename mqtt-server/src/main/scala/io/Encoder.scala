@@ -288,13 +288,13 @@ class Encoder {
   def writeVariableLengthInt(buffer: ByteBuffer, num:Int) =  {
     var numCopy = num
     do {
-      var digit = num % 128;
+      var digit = numCopy % 128;
       numCopy /= 128;
       if (numCopy > 0) {
         digit |= 0x80;
       }
       buffer.put(digit.toByte);
-    } while (num > 0);
+    } while (numCopy > 0);
   }
 
   def getVariableLengthInt(num:Int):Int ={

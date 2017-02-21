@@ -1,5 +1,7 @@
 package io
 
+import java.nio.ByteBuffer
+
 import akka.actor.{ActorLogging, Actor}
 import akka.io.Tcp
 import akka.io.Tcp.{PeerClosed, Write, Received}
@@ -23,6 +25,14 @@ class Handler extends Actor with ActorLogging{
         val response = Encoder.encode(connAckMessage)
         log.info(s"writing data back $response")
         sender() ! Write(response)
+      }
+      if(fixedheader.messageType == PUBLISH){
+        val payload = msg.getPayload.asInstanceOf[ByteBuffer]
+        println(new String(payload.array(),"UTF-8"))
+        val fixedHeader = FixedHeader(PUBACK,false,EXACTLY_ONCE,false,0)
+        val variableHeader = MessageIdVariableHeader(1)
+        val pubAckMessage = PubAckMessage(fixedHeader,variableHeader)
+        sender() ! Write(Encoder.encode(pubAckMessage))
       }
       log.info(s"msg is $msg")
     }
