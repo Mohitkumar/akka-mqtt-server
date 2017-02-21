@@ -11,8 +11,8 @@ import io.Util._
   * Created by Mohit Kumar on 2/20/2017.
   */
 class Encoder {
+
   def doEncode(message : Message):ByteBuffer = {
-    val buffer:ByteBuffer= ByteBuffer.allocate(0)
     message.getFixedHeader.messageType match {
       case CONNECT =>
       return encodeConnectMessage(message.asInstanceOf[ConnectMessage]);
@@ -309,5 +309,13 @@ class Encoder {
 
   def encodeStringUtf8(s: String):Array[Byte] = {
     return s.getBytes("UTF-8")
+  }
+}
+object Encoder{
+  def encode(message: Message):ByteString = {
+    val buf = new Encoder().doEncode(message)
+    val arr = buf.array();
+    print(arr)
+    return ByteString(arr)
   }
 }

@@ -211,7 +211,7 @@ class Decoder {
 
   def decodePublishPayload(buffer: ByteBuffer, bytesRemainingInVariablePart:Int):Result[ByteBuffer]= {
     val resultBuf = ByteBuffer.allocate(bytesRemainingInVariablePart)
-    for(i <- 0 to bytesRemainingInVariablePart){
+    for(i <- 0 until  bytesRemainingInVariablePart){
       resultBuf.put(buffer.get)
     }
     ResultObj[ByteBuffer](resultBuf, bytesRemainingInVariablePart);

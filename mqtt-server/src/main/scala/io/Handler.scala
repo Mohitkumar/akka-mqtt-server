@@ -3,7 +3,7 @@ package io
 import akka.actor.{ActorLogging, Actor}
 import akka.io.Tcp
 import akka.io.Tcp.{PeerClosed, Write, Received}
-import codec.MqttMessage.CONNECT
+import codec.MqttMessage._
 import io.Decoder
 
 /**
@@ -17,7 +17,12 @@ class Handler extends Actor with ActorLogging{
       val msg = Decoder.decodeMsg(data)
       val fixedheader = msg.getFixedHeader
       if(fixedheader.messageType == CONNECT){
-        sender ! Write(data)
+        val fixedHeader = FixedHeader(CONNACK,false,AT_LEAST_ONCE,false,0)
+        val variableHeader  = ConnAckVariableHeader(CONNECTION_ACCEPTED,false);
+        val connAckMessage = ConnAckMessage(fixedHeader,variableHeader)
+        val response = Encoder.encode(connAckMessage)
+        log.info(s"writing data back $response")
+        sender() ! Write(response)
       }
       log.info(s"msg is $msg")
     }
