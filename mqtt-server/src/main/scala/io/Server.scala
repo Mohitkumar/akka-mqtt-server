@@ -25,7 +25,7 @@ class Server extends Actor with ActorLogging{
 }
 object Server{
   def start(): Unit ={
-    val system = ActorSystem("server-sys")
+    val system = ActorSystem("mqtt")
     val actor = system.actorOf(Props[Server],"server")
   }
 }

@@ -2,10 +2,11 @@ package io
 
 import java.nio.ByteBuffer
 
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.{Props, ActorLogging, Actor}
 import akka.io.Tcp
 import akka.io.Tcp.{PeerClosed, Write, Received}
 import codec.MqttMessage._
+import handler.ConnectHandler
 import io.Decoder
 
 /**
@@ -17,16 +18,14 @@ class Handler extends Actor with ActorLogging{
     case Received(data) => {
       log.info("received data" + data)
       val msg = Decoder.decodeMsg(data)
-      val fixedheader = msg.getFixedHeader
-      if(fixedheader.messageType == CONNECT){
-        val fixedHeader = FixedHeader(CONNACK,false,AT_LEAST_ONCE,false,0)
-        val variableHeader  = ConnAckVariableHeader(CONNECTION_ACCEPTED,false);
-        val connAckMessage = ConnAckMessage(fixedHeader,variableHeader)
-        val response = Encoder.encode(connAckMessage)
-        log.info(s"writing data back $response")
-        sender() ! Write(response)
+      log.info(s"decoded msg is $msg")
+      val channel = Channel(context.system)
+      val fixedHeader = msg.getFixedHeader
+      if(fixedHeader.messageType == CONNECT){
+        val connectHandler = context.actorOf(Props(classOf[ConnectHandler],channel),"connectHandler")
+        connectHandler forward msg
       }
-      if(fixedheader.messageType == PUBLISH){
+      /*if(fixedHeader.messageType == PUBLISH){
         val payload = msg.getPayload.asInstanceOf[ByteBuffer]
         println(new String(payload.array(),"UTF-8"))
         val fixedHeader = FixedHeader(PUBACK,false,EXACTLY_ONCE,false,0)
@@ -34,14 +33,13 @@ class Handler extends Actor with ActorLogging{
         val pubAckMessage = PubAckMessage(fixedHeader,variableHeader)
         sender() ! Write(Encoder.encode(pubAckMessage))
       }
-      if(fixedheader.messageType == SUBSCRIBE){
+      if(fixedHeader.messageType == SUBSCRIBE){
         val fixedHeader = FixedHeader(SUBACK,false,AT_LEAST_ONCE,false,0)
         val variableHeader = MessageIdVariableHeader(1)
         val payload = SubAckPayload(List(0))
         val subAckMsg = SubAckMessage(fixedHeader,variableHeader,payload)
         sender ! Write(Encoder.encode(subAckMsg))
-      }
-      log.info(s"msg is $msg")
+      }*/
     }
     case PeerClosed => log.info("stopping handler ");context stop self
     case  d @ _ => log.info("could not understand"+d)

@@ -5,11 +5,11 @@ import io.{Channel, Server}
   */
 object Main {
   def main(args: Array[String]) {
-    //Server.start()
-    val ch = Channel(5)
+    Server.start()
+    /*val ch = Channel(5)
     ch.put("test","value")
     println(ch.get("test"))
     ch.put("data",1)
-    println(ch.getAsInt("data"))
+    println(ch.getAsInt("data"))*/
   }
 }

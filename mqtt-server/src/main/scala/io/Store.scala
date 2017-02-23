@@ -27,10 +27,12 @@ class Store extends Actor with ActorLogging{
       }
     }
     case o => sender ! Failure(new ClassNotFoundException())
+    case Close => context stop self
   }
 }
 object Store{
   case class SetRequest(key: String, value: Any)
   case class GetRequest(key: String)
   case class KeyNotFoundException(key: String) extends Exception
+  case object Close
 }
