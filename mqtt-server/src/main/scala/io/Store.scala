@@ -1,6 +1,6 @@
 package io
 
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.{Terminated, ActorLogging, Actor}
 import akka.actor.Status.{Success, Failure}
 
 import scala.collection.mutable.Map
@@ -16,7 +16,7 @@ class Store extends Actor with ActorLogging{
     case SetRequest(key, value) => {
       log.info(s"set request with key = $key, value = $value")
       dataStore  += ((key, value))
-      sender ! Success
+      //sender ! Success
     }
     case GetRequest(key) => {
       log.info(s"get request with key = $key")
@@ -26,13 +26,19 @@ class Store extends Actor with ActorLogging{
         case None => sender ! Failure(new KeyNotFoundException(key))
       }
     }
-    case o => sender ! Failure(new ClassNotFoundException())
+    case Contains(key) => {
+      sender ! dataStore.contains(key)
+    }
     case Close => context stop self
+    case "state" => log.info(s"$dataStore")
+    case Terminated => log.info(s"actor ${context.self} stopped")
+    case o => sender ! Failure(new ClassNotFoundException())
   }
 }
 object Store{
   case class SetRequest(key: String, value: Any)
   case class GetRequest(key: String)
+  case class Contains(key: String)
   case class KeyNotFoundException(key: String) extends Exception
   case object Close
 }

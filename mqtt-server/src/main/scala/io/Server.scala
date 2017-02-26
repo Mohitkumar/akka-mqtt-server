@@ -2,13 +2,15 @@ package io
 
 import java.net.InetSocketAddress
 
-import akka.actor.{ActorSystem, Props, ActorLogging, Actor}
+import akka.actor._
 import akka.io.{Tcp, IO}
+import broker.MessageBus
+import handler.{SessionManager, Handler}
 
 /**
   * Created by Mohit Kumar on 2/18/2017.
   */
-class Server extends Actor with ActorLogging{
+class Server(sessions: ActorRef) extends Actor with ActorLogging{
   import akka.io.Tcp._
   import context.system
   IO(Tcp) ! Bind(self,new InetSocketAddress("localhost",1883))
@@ -17,7 +19,7 @@ class Server extends Actor with ActorLogging{
     case CommandFailed(_) => log.info("failed to connect stopping server");context stop self
     case c @ Connected(remote, local) =>{
       log.info(s"connected remote $remote local $local connection $c")
-      val handler = context.actorOf(Props[Handler])
+      val handler = context.actorOf(Props(classOf[Handler],sessions))
       sender ! Register(handler)
     }
   }
@@ -26,6 +28,8 @@ class Server extends Actor with ActorLogging{
 object Server{
   def start(): Unit ={
     val system = ActorSystem("mqtt")
-    val actor = system.actorOf(Props[Server],"server")
+    val bus = MessageBus()
+    val sessions = system.actorOf(Props(classOf[SessionManager],bus),"sessionManager")
+    system.actorOf(Props(classOf[Server],sessions),"server")
   }
 }
