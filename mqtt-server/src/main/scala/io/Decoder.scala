@@ -26,7 +26,11 @@ class Decoder {
     if(remainingLength != 0){
       throw new DecoderException(s"non-zero remaining payload bytes: $remainingLength (${fixedHeader.messageType})");
     }
-    new Message(fixedHeader,variableHeader,payload)
+    val msg = new Message(fixedHeader,variableHeader,payload)
+    if(msg.getFixedHeader.messageType == CONNECT){
+      return new ConnectMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[ConnectVariableHeader], msg.getPayload.asInstanceOf[ConnectPayload]);
+    }
+    msg
   }
 
   def decodeFixedHeader(buffer: ByteBuffer):FixedHeader = {

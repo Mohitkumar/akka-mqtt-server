@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 import akka.actor._
 import akka.io.{Tcp, IO}
 import broker.MessageBus
-import handler.{SessionManager, Handler}
+import handler.{ConnectionHandler, SessionManager}
 
 /**
   * Created by Mohit Kumar on 2/18/2017.
@@ -19,7 +19,7 @@ class Server(sessions: ActorRef) extends Actor with ActorLogging{
     case CommandFailed(_) => log.info("failed to connect stopping server");context stop self
     case c @ Connected(remote, local) =>{
       log.info(s"connected remote $remote local $local connection $c")
-      val handler = context.actorOf(Props(classOf[Handler],sessions))
+      val handler = context.actorOf(Props(classOf[ConnectionHandler],sessions))
       sender ! Register(handler)
     }
   }
