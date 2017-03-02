@@ -103,7 +103,7 @@ class Session(bus: MessageBus) extends FSM[SessionState,SessionData]{
     case Event(SessionReceived(msg:Message, SUBSCRIBE), data:SessionConnectedData) =>{
       val subMsg = msg.asInstanceOf[SubscriptionMessage]
       subMsg.getPayload.topicSubscriptions.foreach(t =>{
-        bus.subscribe(self,t.topicFilter)
+        bus.subscribe(self,t.topicFilter,QoS.value(subMsg.getFixedHeader.qos))
       })
       stay
     }
