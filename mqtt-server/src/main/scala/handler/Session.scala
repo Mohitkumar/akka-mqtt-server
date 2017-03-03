@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 
 import akka.actor.{FSM, ActorRef}
 import broker.MessageBus
+import broker.MessageBus.Msg
 import codec.MqttMessage._
 import scala.concurrent.duration._
 
@@ -68,10 +69,8 @@ class Session(bus: MessageBus) extends FSM[SessionState,SessionData]{
 
         val will = if(connectMessage.getVariableHeader.isWillFlag){
           val willMsg = connectMessage.getPayload.willMessage
-          val data = ByteBuffer.allocate(willMsg.length)
-          willMsg.foreach(f => data.putChar(f))
           Some(PublishMessage(FixedHeader(PUBLISH,false,QoS.getQos(connectMessage.getVariableHeader.willQos),connectMessage.getVariableHeader.isWillRetain,0),
-            PublishVariableHeader(connectMessage.payload.willTopic,0),data))
+            PublishVariableHeader(connectMessage.payload.willTopic,0),willMsg))
         } else None
 
         goto(SessionConnected) using SessionConnectedData(sender,cleanSession,data.messageId,List(),will, System.currentTimeMillis())
@@ -106,6 +105,20 @@ class Session(bus: MessageBus) extends FSM[SessionState,SessionData]{
         bus.subscribe(self,t.topicFilter,QoS.value(subMsg.getFixedHeader.qos))
       })
       stay
+    }
+
+    case Event(SessionReceived(msg:Message, PUBLISH),data: SessionConnectedData) =>{
+      val pubMsg = msg.asInstanceOf[PublishMessage]
+      if(msg.getFixedHeader.qos == AT_MOST_ONCE){
+        sender ! PubAckMessage(FixedHeader(PUBACK,false,AT_LEAST_ONCE,false,0),MessageIdVariableHeader(pubMsg.getVariableHeader.messageId))
+      }
+      if(msg.getFixedHeader.qos == EXACTLY_ONCE){
+        sender ! new Message(FixedHeader(PUBREC,false,AT_LEAST_ONCE,false,0),MessageIdVariableHeader(pubMsg.getVariableHeader.messageId),null)
+      }
+      if(!pubMsg.getFixedHeader.isRetain && (pubMsg.payload == null || pubMsg.payload.length == 0)){
+        bus.publish(Msg(pubMsg.getVariableHeader.topicName,pubMsg.getPayload))
+      }
+      stay using data.copy(last_packet = System.currentTimeMillis())
     }
   }
 

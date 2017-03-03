@@ -5,12 +5,13 @@ import java.util.UUID
 
 import akka.actor.{Props, ActorRef, ActorLogging, Actor}
 import akka.event.EventBus
+import broker.MessageBus
 import codec.MqttMessage.{ConnectMessage, CONNECT}
 
 /**
   * Created by Mohit Kumar on 2/26/2017.
   */
-class SessionManager(bus: EventBus) extends Actor with ActorLogging{
+class SessionManager(bus: MessageBus) extends Actor with ActorLogging{
   def getActorName(clientId: String):String = {
     val cid = if(clientId.isEmpty) UUID.randomUUID().toString else clientId
     URLEncoder.encode(cid,"UTF-8")

@@ -228,13 +228,13 @@ class Encoder {
   def encodePublishMessage(message : PublishMessage):ByteBuffer = {
     val mqttFixedHeader = message.fixedHeader;
     val variableHeader = message.variableHeader;
-    val payload = message.payload.duplicate();
+    val payload = message.payload;
 
     val topicName = variableHeader.topicName;
     val topicNameBytes = encodeStringUtf8(topicName);
     val qos = if(QoS.value(mqttFixedHeader.qos)> 0) 2 else 0
     val variableHeaderBufferSize = 2 + topicNameBytes.length + qos;
-    val  payloadBufferSize = payload.remaining();
+    val  payloadBufferSize = payload.length;
     val variablePartSize = variableHeaderBufferSize + payloadBufferSize;
     val fixedHeaderBufferSize = 1 + getVariableLengthInt(variablePartSize);
 
@@ -246,7 +246,7 @@ class Encoder {
     if(QoS.value(mqttFixedHeader.qos)> 0) {
       buf.putShort(variableHeader.messageId.toShort);
     }
-    buf.put(payload);
+    buf.put(payload.getBytes("UTF-8"));
     return buf;
   }
 

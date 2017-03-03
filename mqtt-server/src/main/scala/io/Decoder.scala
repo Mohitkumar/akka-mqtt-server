@@ -28,9 +28,27 @@ class Decoder {
     }
     val msg = new Message(fixedHeader,variableHeader,payload)
     if(msg.getFixedHeader.messageType == CONNECT){
-      return new ConnectMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[ConnectVariableHeader], msg.getPayload.asInstanceOf[ConnectPayload]);
+      return ConnectMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[ConnectVariableHeader], msg.getPayload.asInstanceOf[ConnectPayload]);
     }
-    msg
+    if(msg.getFixedHeader.messageType == PUBLISH){
+      return PublishMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[PublishVariableHeader],msg.getPayload.asInstanceOf[String])
+    }
+    if(msg.getFixedHeader.messageType == PUBACK){
+      return PubAckMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[MessageIdVariableHeader])
+    }
+    if(msg.getFixedHeader.messageType == SUBSCRIBE){
+      return SubscriptionMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[MessageIdVariableHeader],msg.getPayload.asInstanceOf[SubscriptionPayload])
+    }
+    if(msg.getFixedHeader.messageType == SUBACK){
+      return SubAckMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[MessageIdVariableHeader],msg.getPayload.asInstanceOf[SubAckPayload])
+    }
+    if(msg.getFixedHeader.messageType == UNSUBSCRIBE){
+      return UnsubscribeMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[MessageIdVariableHeader],msg.getPayload.asInstanceOf[UnsubscribePayload])
+    }
+    if(msg.getFixedHeader.messageType == UNSUBACK){
+      return UnsubAckMessage(msg.getFixedHeader,msg.getVariableHeader.asInstanceOf[MessageIdVariableHeader])
+    }
+    return msg
   }
 
   def decodeFixedHeader(buffer: ByteBuffer):FixedHeader = {
@@ -213,12 +231,14 @@ class Decoder {
     ResultObj(UnsubscribePayload(unsubscribeTopics), numberOfBytesConsumed)
   }
 
-  def decodePublishPayload(buffer: ByteBuffer, bytesRemainingInVariablePart:Int):Result[ByteBuffer]= {
+  def decodePublishPayload(buffer: ByteBuffer, bytesRemainingInVariablePart:Int):Result[String]= {
     val resultBuf = ByteBuffer.allocate(bytesRemainingInVariablePart)
     for(i <- 0 until  bytesRemainingInVariablePart){
       resultBuf.put(buffer.get)
     }
-    ResultObj[ByteBuffer](resultBuf, bytesRemainingInVariablePart);
+
+    val s = new String(resultBuf.array(),"UTF-8")
+    ResultObj[String](s, bytesRemainingInVariablePart);
   }
 
   def decodeMessageId(buffer: ByteBuffer):Result[Int]= {

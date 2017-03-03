@@ -1,7 +1,7 @@
 package handler
 
 import akka.actor.{FSM, ActorLogging, Actor, ActorRef}
-import akka.io.Tcp.{PeerClosed, Close, Received}
+import akka.io.Tcp.{Write, PeerClosed, Close, Received}
 import akka.util.Timeout
 import codec.MqttMessage._
 import com.sun.xml.internal.ws.api.message.Packet
@@ -51,13 +51,19 @@ class ConnectionHandler(sessions: ActorRef) extends FSM[ConnectionState, Connect
     case Event(p:ConnAckMessage, data: ConnectionSessionData) => {
       val response = Encoder.encode(p)
       log.info(s"sending msg $p response $response to ${data.connection}")
-      data.connection ! response
+      data.connection ! Write(response)
+      stay
+    }
+    case Event(p:PubAckMessage, data: ConnectionSessionData) => {
+      val response = Encoder.encode(p)
+      log.info(s"sending msg $p response $response to ${data.connection}")
+      data.connection ! Write(response)
       stay
     }
     case Event(p:Message, data: ConnectionSessionData) => {
       val response = Encoder.encode(p)
       log.info(s"sending msg $p response $response to ${data.connection}")
-      data.connection ! response
+      data.connection ! Write(response)
       stay
     }
     case Event(Received(datarec), data: ConnectionSessionData) => {

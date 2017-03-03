@@ -171,7 +171,7 @@ object MqttMessage {
   }
 
   case class PublishVariableHeader(topicName : String, messageId : Int)
-  case class PublishMessage( fixedHeader: FixedHeader,  variableHeader: PublishVariableHeader, payload: ByteBuffer) extends Message(fixedHeader, variableHeader, payload, null){
+  case class PublishMessage( fixedHeader: FixedHeader,  variableHeader: PublishVariableHeader, payload: String) extends Message(fixedHeader, variableHeader, payload, null){
     override def getFixedHeader = fixedHeader
     override def getVariableHeader = variableHeader
     override def getPayload = payload
