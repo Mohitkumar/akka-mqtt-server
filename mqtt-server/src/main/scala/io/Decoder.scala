@@ -197,36 +197,36 @@ class Decoder {
   }
 
   def decodeSubscribePayload(buffer: ByteBuffer, bytesRemainingInVariablePart:Int):Result[SubscriptionPayload] = {
-    val subscribeTopics = List[TopicSubscription]()
+    var subscribeTopics = List[TopicSubscription]()
     var numberOfBytesConsumed = 0;
     while (numberOfBytesConsumed < bytesRemainingInVariablePart) {
       val decodedTopicName = decodeString(buffer)
       numberOfBytesConsumed += decodedTopicName.numberOfByteConsumed
       val qos = buffer.get & 0xff & 0x03
       numberOfBytesConsumed += 1;
-      subscribeTopics.+:(TopicSubscription(decodedTopicName.value, QoS.getQos(qos)))
+      subscribeTopics = subscribeTopics :+ TopicSubscription(decodedTopicName.value, QoS.getQos(qos))
     }
      ResultObj[SubscriptionPayload](SubscriptionPayload(subscribeTopics), numberOfBytesConsumed)
   }
 
   def decodeSubackPayload(buffer: ByteBuffer, bytesRemainingInVariablePart:Int): Result[SubAckPayload] = {
-    val grantedQos = List[Int]()
+    var grantedQos = List[Int]()
     var numberOfBytesConsumed = 0;
     while (numberOfBytesConsumed < bytesRemainingInVariablePart) {
       val qos = buffer.get & 0xff & 0x03
       numberOfBytesConsumed += 1
-      grantedQos.+:(qos)
+      grantedQos = grantedQos.+:(qos)
     }
     ResultObj(SubAckPayload(grantedQos), numberOfBytesConsumed)
   }
 
   def decodeUnsubscribePayload(buffer: ByteBuffer, bytesRemainingInVariablePart: Int) = {
-    val unsubscribeTopics = List[String]()
+    var unsubscribeTopics = List[String]()
     var numberOfBytesConsumed = 0
     while (numberOfBytesConsumed < bytesRemainingInVariablePart) {
       val decodedTopicName = decodeString(buffer)
       numberOfBytesConsumed += decodedTopicName.numberOfByteConsumed
-      unsubscribeTopics.+:(decodedTopicName.value)
+      unsubscribeTopics = unsubscribeTopics.+:(decodedTopicName.value)
     }
     ResultObj(UnsubscribePayload(unsubscribeTopics), numberOfBytesConsumed)
   }

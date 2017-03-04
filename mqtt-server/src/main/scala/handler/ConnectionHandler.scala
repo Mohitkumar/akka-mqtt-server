@@ -68,6 +68,7 @@ class ConnectionHandler(sessions: ActorRef) extends FSM[ConnectionState, Connect
     }
     case Event(Received(datarec), data: ConnectionSessionData) => {
       val msg = Decoder.decodeMsg(datarec)
+      log.info(s"raw message $datarec, message $msg")
       if(msg.getFixedHeader.messageType == CONNECT){
         log.info("Unexpected Connect. Closing peer")
         sender ! Close
