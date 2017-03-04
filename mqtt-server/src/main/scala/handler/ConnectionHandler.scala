@@ -19,7 +19,7 @@ case object Active extends ConnectionState
 case object Waiting extends ConnectionState
 sealed trait ConnectionData
 case object EmptyConnectionData extends ConnectionData
-case class ConnectionSessionData(session:ActorRef, connection:ActorRef) extends ConnectionData
+case class ConnectionSessionData(session:ActorRef, connection:ActorRef, client:String) extends ConnectionData
 class ConnectionHandler(sessions: ActorRef) extends FSM[ConnectionState, ConnectionData] with ActorLogging {
 
   startWith(Waiting, EmptyConnectionData)
@@ -30,9 +30,10 @@ class ConnectionHandler(sessions: ActorRef) extends FSM[ConnectionState, Connect
       val msg = Decoder.decodeMsg(data)
       log.info(s"received request ${msg.getFixedHeader.messageType}")
       if(msg.getFixedHeader.messageType == CONNECT){
+        val connMsg = msg.asInstanceOf[ConnectMessage]
         val session =Await.result((sessions ? SessionReceived(msg, CONNECT)).mapTo[ActorRef],timeout.duration)
         session ! SessionReceived(msg, CONNECT)
-        goto(Active) using ConnectionSessionData(session, sender)
+        goto(Active) using ConnectionSessionData(session, sender,connMsg.getPayload.clientIdentifier)
       }
       else {
         log.info(s"unexpected $data while waiting. Closing peer")
@@ -51,25 +52,31 @@ class ConnectionHandler(sessions: ActorRef) extends FSM[ConnectionState, Connect
   when(Active){
     case Event(p:ConnAckMessage, data: ConnectionSessionData) => {
       val response = Encoder.encode(p)
-      log.info(s"sending CONNACK to client")
+      log.info(s"sending CONNACK to client ${data.client}")
       data.connection ! Write(response)
       stay
     }
     case Event(p:PubAckMessage, data: ConnectionSessionData) => {
       val response = Encoder.encode(p)
-      log.info(s"sending PUBACK to client")
+      log.info(s"sending PUBACK to client ${data.client}")
+      data.connection ! Write(response)
+      stay
+    }
+    case Event(p:SubAckMessage, data: ConnectionSessionData) => {
+      val response = Encoder.encode(p)
+      log.info(s"sending SUBACK to client ${data.client}")
       data.connection ! Write(response)
       stay
     }
     case Event(p:Message, data: ConnectionSessionData) => {
       val response = Encoder.encode(p)
-      log.info(s"sending ${p.getFixedHeader.messageType} to client")
+      log.info(s"sending ${p.getFixedHeader.messageType} to client ${data.client}")
       data.connection ! Write(response)
       stay
     }
     case Event(Received(datarec), data: ConnectionSessionData) => {
       val msg = Decoder.decodeMsg(datarec)
-      log.info(s"received ${msg.getFixedHeader.messageType} from client")
+      log.info(s"received ${msg.getFixedHeader.messageType} from client ${data.client}")
       if(msg.getFixedHeader.messageType == CONNECT){
         log.info("Unexpected Connect. Closing peer")
         sender ! Close

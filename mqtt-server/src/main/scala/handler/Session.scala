@@ -104,12 +104,15 @@ class Session(bus: MessageBus) extends FSM[SessionState,SessionData]{
       topics.foreach(t =>{
         bus.subscribe(self,t.topicFilter,QoS.value(subMsg.getFixedHeader.qos))
       })
+      sender !SubAckMessage(FixedHeader(SUBACK,false,AT_MOST_ONCE,false,0),MessageIdVariableHeader(subMsg.getVariableHeader.messageId)
+        ,SubAckPayload(subMsg.getPayload.topicSubscriptions.map(f=>QoS.value(f.qoS))))
+
       stay using data.copy(last_packet = System.currentTimeMillis())
     }
 
     case Event(SessionReceived(msg:Message, PUBLISH),data: SessionConnectedData) =>{
       val pubMsg = msg.asInstanceOf[PublishMessage]
-      if(msg.getFixedHeader.qos == AT_MOST_ONCE){
+      if(msg.getFixedHeader.qos == AT_LEAST_ONCE){
         sender ! PubAckMessage(FixedHeader(PUBACK,false,AT_MOST_ONCE,false,0),MessageIdVariableHeader(pubMsg.getVariableHeader.messageId))
       }
       if(msg.getFixedHeader.qos == EXACTLY_ONCE){
