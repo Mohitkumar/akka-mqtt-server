@@ -1,11 +1,10 @@
-package io
+package codec
 
 import java.nio.ByteBuffer
 
 import akka.util.ByteString
 import codec.MqttMessage._
-import codec.MqttVersion
-import io.Util._
+import util.Util._
 
 /**
   * Created by Mohit Kumar on 2/20/2017.

@@ -87,11 +87,11 @@ class Session(bus: MessageBus) extends FSM[SessionState,SessionData]{
   when(SessionConnected) {
     case Event(CheckKeepAlive(delay), data: SessionConnectedData) => {
       if ((System.currentTimeMillis() - delay.toMillis) < data.last_packet) {
-        log.info("checking keepalive OK")
+        log.info("checking keepalive ->OK")
         context.system.scheduler.scheduleOnce(delay, self, CheckKeepAlive(delay))(context.system.dispatcher)
         stay
       } else {
-        log.info("checking keepalive is NOT ok")
+        log.info("checking keepalive is ->NOT OK sending ConnectionLost")
         data.connection ! KeepAliveTimeout
         self ! ConnectionLost
         stay
@@ -208,7 +208,7 @@ class Session(bus: MessageBus) extends FSM[SessionState,SessionData]{
 
   def handler(from: SessionState, to: SessionState): Unit = {
 
-    log.info("State changed from " + from + " to " + to)
+    log.debug("State changed from " + from + " to " + to)
   }
 
   initialize()

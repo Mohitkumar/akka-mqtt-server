@@ -2,8 +2,6 @@ package codec
 
 import java.nio.ByteBuffer
 
-import io.DecoderException
-
 /**
   * Created by Mohit Kumar on 2/18/2017.
   */

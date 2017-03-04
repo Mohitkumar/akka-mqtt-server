@@ -1,9 +1,7 @@
-package io
-
 import java.net.InetSocketAddress
 
 import akka.actor._
-import akka.io.{Tcp, IO}
+import akka.io.{IO, Tcp}
 import broker.MessageBus
 import handler.{ConnectionHandler, SessionManager}
 

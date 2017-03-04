@@ -1,4 +1,4 @@
-package io
+package codec
 
 /**
   * Created by Mohit Kumar on 2/19/2017.

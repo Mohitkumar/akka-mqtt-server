@@ -1,6 +1,6 @@
-package io
+package util
 
-import codec.{MQTT_3_1_1, MQTT_3_1, MqttVersion}
+import codec.{Decoder, MQTT_3_1_1, MQTT_3_1, MqttVersion}
 
 /**
   * Created by Mohit Kumar on 2/20/2017.

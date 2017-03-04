@@ -1,7 +1,5 @@
 package codec
 
-import io.UnAcceptableProtocolException
-
 /**
   * Created by Mohit Kumar on 2/19/2017.
   */
