@@ -11,7 +11,7 @@ import handler.{ConnectionHandler, SessionManager}
 class Server(sessions: ActorRef) extends Actor with ActorLogging{
   import akka.io.Tcp._
   import context.system
-  IO(Tcp) ! Bind(self,new InetSocketAddress("localhost",1883))
+  IO(Tcp) ! Bind(self,new InetSocketAddress(1883))
   def receive = {
     case b @ Bound(address) => log.info("bound to "+ address)
     case CommandFailed(_) => log.info("failed to connect stopping server");context stop self
